@@ -22,7 +22,7 @@ with DAG(
         snowflake_conn_id = 'snowflake_conn',
         sql = 'TRUNCATE TABLE AIRLINE_DWH.RAW_LAYER.STG_AIRLINE_RAW;'
     )
-#загрузка
+#загрузка CSV
     task_load_csv = SnowflakeOperator(
         task_id = 'task_load_csv',
         snowflake_conn_id = 'snowflake_conn',
@@ -39,5 +39,21 @@ with DAG(
             ON_ERROR = CONTINUE;
         """
     )
+# загрузка фактов
 
-task_trancute >> task_load_csv
+    task_load_fact = SnowflakeOperator(
+        task_id = 'task_load_fact',
+        snowflake_conn_id = 'snowflake_conn',
+        sql = "CALL AIRLINE_DWH.CORE_LAYER.LOAD_FACT_FLIGHTS();"
+    )
+
+
+# обновление витрин
+    task_update_mart = SnowflakeOperator(
+        task_id = 'task_update_mart',
+        snowflake_conn_id = 'snowflake_conn',
+        sql = "CALL AIRLINE_DWH.DATA_MARTS.LOAD_DM_AIRPORT_STATS();"
+    )
+
+
+task_trancute >> task_load_csv >> task_load_fact >> task_update_mart
